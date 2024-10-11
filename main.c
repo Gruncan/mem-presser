@@ -1,8 +1,7 @@
-#include <unistd.h>
-#include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <unistd.h>
+#include <string.h>
 
 int main(int argc, char *argv[]){
 
@@ -12,25 +11,24 @@ int main(int argc, char *argv[]){
     }
 
     int size = atoi(argv[1]);
-
     size_t length = size * 1024 * 1024;
-    void* ptr = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-    if(ptr == MAP_FAILED){
-        perror("Error mapping memory");
-        return -1;
-    }
+    void *ptr;
+    int count = 0;
 
-    if(madvise(ptr, length, MADV_POPULATE_WRITE) == -1) {
-        perror("Error madvising memory");
-        return -2;
-    }
+    while (1) {
+        ptr = malloc(length);
+        if (ptr == NULL) {
+            printf("Memory allocation failed after %d MB\n", count * 10);
+            break;
+        }
+        memset(ptr, 0, length);
 
+        count++;
+        printf("Allocated %d MB\n", count * 10);
 
-    while(1) {
-
+        usleep(100000); // 100 ms
     }
 
     return 0;
-
 }
