@@ -3,4 +3,5 @@ project(mem_presser C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(mem_presser main.c)
+add_executable(mem_presser main.c
+        collector/mem_tracker.c)
