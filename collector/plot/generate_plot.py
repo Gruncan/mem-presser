@@ -2,6 +2,9 @@ from datetime import datetime
 
 import matplotlib.pyplot as plt
 import sys
+import os
+
+import json
 
 
 def generate_plot(x, y):
@@ -12,7 +15,7 @@ def generate_plot(x, y):
 
     plt.title("Memory Usage")
     plt.xlabel("Time")
-    plt.ylabel("Memory Used (Bytes)")
+    plt.ylabel("Memory Used (KB)")
 
     plt.legend()
 
@@ -26,17 +29,20 @@ def main():
         print("Unsure how to parse!", file=sys.stderr)
         return
 
+    filename = args[0]
 
     x = []
     y = []
-    filename = args[0]
+
     with open(filename, "r") as f:
         lines = f.readlines()
         for line in lines:
-            d = line.strip().split("-")
-            date_str, mem = "-".join(d[:-1]), int(d[-1].strip())
-            x.append(datetime.strptime(date_str.strip(), '%Y-%m-%d %H:%M:%S.%f'))
-            y.append(mem)
+            d = json.loads(line)
+            key = list(d.keys())[0]
+            values = d[key]
+            x.append(datetime.strptime(key, '%Y-%m-%d %H:%M:%S.%f'))
+            y.append(int(values["total"]) - int(values["free"]))
+
 
     generate_plot(x, y)
 
