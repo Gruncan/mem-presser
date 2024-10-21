@@ -12,27 +12,19 @@ int main(int argc, char *argv[]){
     }
 
     int size = atoi(argv[1]);
-    size_t length = size * 1024 * 1024;
+    unsigned long length = size * 1024 * 1024;
 
     struct sysinfo info;
     if (sysinfo(&info) != 0) {
         perror("sysinfo");
     }
 
-    unsigned long freeRamStart = info.freeram;
+    unsigned long long freeRamStart = info.freeram;
 
     void *ptr;
     int count = 0;
 
     while (1) {
-        if (sysinfo(&info) != 0) {
-            perror("sysinfo");
-            break;
-        }
-
-        if (info.freeram >= freeRamStart ) {
-            length = (freeRamStart - info.freeram) / length;
-        }
 
         ptr = malloc(length);
         if (ptr == NULL) {
@@ -41,10 +33,27 @@ int main(int argc, char *argv[]){
         }
         memset(ptr, 0, length);
 
-        count++;
-        printf("Allocated %d MB\n", count * 10);
+        printf("Allocated %lu MB\n", length);
 
         usleep(100000); // 100 ms
+
+        if (sysinfo(&info) != 0) {
+            perror("sysinfo");
+            break;
+        }
+
+
+        if ((double) info.freeram <= 0.3 * (double) freeRamStart && count == 0) {
+            length /= 2;
+            count++;
+        }else if ((double) info.freeram <= 0.2 * (double) freeRamStart && count == 1) {
+            length /= 2;
+            count++;
+        }else if ((double) info.freeram <= 0.1 * (double) freeRamStart && count == 2) {
+            length /= 2;
+            count++;
+        }
+
     }
 
     return 0;
