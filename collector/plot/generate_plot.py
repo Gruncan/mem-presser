@@ -23,8 +23,9 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
     for i, v in enumerate(vs):
         plt.axvline(x=v, color='black', linestyle='--', linewidth=2, label=f'v{i}={v}')
 
-    for i, v in enumerate((alloc_start, alloc_end)):
-        plt.axvline(x=v, color='b', linestyle='--', linewidth=2, label=f'v{i}={v}')
+
+    plt.axvline(x=alloc_start, color='b', linestyle='--', linewidth=2, label=f'AllocationStart={alloc_start}')
+    plt.axvline(x=alloc_end, color='b', linestyle='--', linewidth=2, label=f'AllocationEnd={alloc_end}')
 
 
     plt.title("Memory Usage")
@@ -133,30 +134,29 @@ def main():
     x_seconds = np.array([(t - x[0]).total_seconds() for t in x])
 
 
-    sk_filter = "Filter " + sk
-    sk_der1 =  "dx/dy " + sk
-    sk_der2 = "d^2x/dy^2  " + sk
-    sk_der3 = "d^3x/dy^3" + sk
+    # sk_der1 =  "dx/dy " + sk
+    # sk_der2 = "d^2x/dy^2  " + sk
+    # sk_der3 = "d^3x/dy^3" + sk
 
-    filt[sk_filter] = gaussian_filter1d(filt[sk], sigma=7)
+    sk_filter = gaussian_filter1d(filt[sk], sigma=7)
 
-    filt[sk_der1] = np.gradient(filt[sk_filter], x_seconds)
-    filt[sk_der1] = gaussian_filter1d(filt[sk_der1], sigma=5)
-
-
-    filt[sk_der2] = np.gradient(filt[sk_der1], x_seconds)
-    filt[sk_der2] = gaussian_filter1d(filt[sk_der2], sigma=20)
-
-    allocation_end = np.argmin(filt[sk_der2])
-    allocation_start = np.argmax(filt[sk_der2][:allocation_end])
+    sk_der1 = np.gradient(filt[sk], x_seconds)
+    sk_der1 = gaussian_filter1d(sk_der1, sigma=5)
 
 
-    filt[sk_der3] = np.gradient(filt[sk_der2], x_seconds)
-    filt[sk_der3] = gaussian_filter1d(filt[sk_der3], sigma=20)
+    sk_der2 = np.gradient(sk_der1, x_seconds)
+    sk_der2 = gaussian_filter1d(sk_der2, sigma=14)
+
+    allocation_end = np.argmin(sk_der2)
+    allocation_start = np.argmax(sk_der2[:allocation_end])
+
+
+    sk_der3 = np.gradient(sk_der2, x_seconds)
+    sk_der3 = gaussian_filter1d(sk_der3, sigma=15)
 
 
 
-    maxima = find_n_maxima(filt[sk_der3][allocation_start:], filt[sk_der1][allocation_start:], N-1)
+    maxima = find_n_maxima(sk_der3[allocation_start:], sk_der1[allocation_start:], N-1)
     maxima = [ima + allocation_start for ima in maxima]
 
 
