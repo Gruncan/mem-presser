@@ -3,10 +3,14 @@ import sys
 import json
 import matplotlib.pyplot as plt
 import mplcursors
+import math
+
+import numpy as np
+from scipy.ndimage import gaussian_filter1d
+from scipy.signal import find_peaks
 
 
-
-def generate_plot(time, *stats):
+def generate_plot(time, stats, alloc_start, alloc_end, *vs):
     plt.figure()
 
     lines = []
@@ -14,6 +18,14 @@ def generate_plot(time, *stats):
     for name, stat in stats:
         line, = plt.plot(time, stat, label=name)
         lines.append(line)
+
+
+    for i, v in enumerate(vs):
+        plt.axvline(x=v, color='black', linestyle='--', linewidth=2, label=f'v{i}={v}')
+
+    for i, v in enumerate((alloc_start, alloc_end)):
+        plt.axvline(x=v, color='b', linestyle='--', linewidth=2, label=f'v{i}={v}')
+
 
     plt.title("Memory Usage")
     plt.xlabel("Time")
@@ -50,8 +62,41 @@ def generate_plot(time, *stats):
     plt.show()
 
 
+def find_next_intersection(stat1, stat2, start_index, after=True):
+    diff = stat1 - stat2
+
+    sign_diff = np.sign(diff)
+
+    sign_changes = np.where(np.diff(sign_diff) != 0)[0] + 1
+
+    if after:
+        next_intersection = sign_changes[sign_changes > start_index]
+    else:
+        next_intersection = sign_changes[sign_changes < start_index]
 
 
+    if len(next_intersection) > 0:
+        return next_intersection[0]
+    else:
+        return None
+
+def find_n_maxima(sk_der3, sk_der1, N):
+    peaks, _ = find_peaks(sk_der3)
+
+    valid_maxima = []
+
+    for peak in peaks:
+        if sk_der3[peak] > sk_der1[peak]:
+            valid_maxima.append(peak)
+
+        if len(valid_maxima) >= N:
+            break
+
+    return valid_maxima
+
+
+
+N = 4
 
 def main():
     args = sys.argv[1:]
@@ -83,7 +128,39 @@ def main():
                 if v is not None:
                     stats[k].append(int(v))
 
-    generate_plot(x, *tuple(stats.items()))
+
+    filt =  {sk: stats[sk]} if sk in stats else {}.items()
+    x_seconds = np.array([(t - x[0]).total_seconds() for t in x])
+
+
+    sk_filter = "Filter " + sk
+    sk_der1 =  "dx/dy " + sk
+    sk_der2 = "d^2x/dy^2  " + sk
+    sk_der3 = "d^3x/dy^3" + sk
+
+    filt[sk_filter] = gaussian_filter1d(filt[sk], sigma=7)
+
+    filt[sk_der1] = np.gradient(filt[sk_filter], x_seconds)
+    filt[sk_der1] = gaussian_filter1d(filt[sk_der1], sigma=5)
+
+
+    filt[sk_der2] = np.gradient(filt[sk_der1], x_seconds)
+    filt[sk_der2] = gaussian_filter1d(filt[sk_der2], sigma=20)
+
+    allocation_end = np.argmin(filt[sk_der2])
+    allocation_start = np.argmax(filt[sk_der2][:allocation_end])
+
+
+    filt[sk_der3] = np.gradient(filt[sk_der2], x_seconds)
+    filt[sk_der3] = gaussian_filter1d(filt[sk_der3], sigma=20)
+
+
+
+    maxima = find_n_maxima(filt[sk_der3][allocation_start:], filt[sk_der1][allocation_start:], N-1)
+    maxima = [ima + allocation_start for ima in maxima]
+
+
+    generate_plot(x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
 
 
 
