@@ -1,6 +1,8 @@
 from datetime import datetime
 import sys
 import json
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import mplcursors
 import math
@@ -14,7 +16,8 @@ import matplotlib.pyplot as plt
 import mplcursors
 import mpld3
 
-def generate_plot(time, stats, alloc_start, alloc_end, *vs):
+
+def generate_plot(html_filename, time, stats, alloc_start, alloc_end, *vs):
     plt.figure(figsize=(16, 9))
 
     lines = []
@@ -23,12 +26,12 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
         line, = plt.plot(time, stat, label=name)
         lines.append(line)
 
-    for i, v in enumerate(vs):
-        plt.axvline(x=v, color='black', linestyle='--', linewidth=2, label=f'v{i}={v}')
-
-    if alloc_start and alloc_end:
-        plt.axvline(x=alloc_start, color='b', linestyle='--', linewidth=2, label=f'AllocationStart={alloc_start}')
-        plt.axvline(x=alloc_end, color='b', linestyle='--', linewidth=2, label=f'AllocationEnd={alloc_end}')
+    # for i, v in enumerate(vs):
+    #     plt.axvline(x=v, color='black', linestyle='--', linewidth=2, label=f'v{i}={v}')
+    #
+    # if alloc_start and alloc_end:
+    #     plt.axvline(x=alloc_start, color='b', linestyle='--', linewidth=2, label=f'AllocationStart={alloc_start}')
+    #     plt.axvline(x=alloc_end, color='b', linestyle='--', linewidth=2, label=f'AllocationEnd={alloc_end}')
 
     plt.title("Memory Usage")
     plt.xlabel("Time")
@@ -60,8 +63,7 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
         if bbox is not None:
             bbox.set(fc="white", alpha=0.6)
 
-    # Save the plot as an HTML file
-    html_filename = "interactive_plot.html"
+
     mpld3.save_html(plt.gcf(), html_filename)
     print(f"Plot saved as {html_filename}")
 
@@ -138,13 +140,13 @@ def main():
     x_seconds = np.array([(t - x[0]).total_seconds() for t in x])
 
     # filt =  {sk: stats[sk]} if sk in stats else {}.items()
-
-
-
+    #
+    #
+    #
     # sk_der1 =  "dx/dy " + sk
     # sk_der2 = "d^2x/dy^2  " + sk
     # sk_der3 = "d^3x/dy^3" + sk
-
+    #
     # sk_filter = gaussian_filter1d(filt[sk], sigma=7)
     #
     # sk_der1 = np.gradient(filt[sk], x_seconds)
@@ -166,10 +168,15 @@ def main():
     # maxima = find_n_maxima(sk_der3[allocation_start:], sk_der1[allocation_start:], N-1)
     # maxima = [ima + allocation_start for ima in maxima]
     #
-    #
-    # generate_plot(x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
+    # filt["sk_der1"] = sk_der1
+    # filt["sk_der2"] = sk_der2
+    # filt["sk_der3"] = sk_der3
 
-    generate_plot(x_seconds, tuple(stats.items()), None, None)
+    name = "docs/" + Path(filename).name.split(".")[0] + ".html"
+    # generate_plot(name, x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
+
+
+    generate_plot(name, x_seconds, tuple(stats.items()), None, None)
 
 
 
