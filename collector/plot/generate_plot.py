@@ -10,6 +10,10 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 
 
+import matplotlib.pyplot as plt
+import mplcursors
+import mpld3
+
 def generate_plot(time, stats, alloc_start, alloc_end, *vs):
     plt.figure()
 
@@ -19,19 +23,16 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
         line, = plt.plot(time, stat, label=name)
         lines.append(line)
 
-
     for i, v in enumerate(vs):
         plt.axvline(x=v, color='black', linestyle='--', linewidth=2, label=f'v{i}={v}')
 
-
-    plt.axvline(x=alloc_start, color='b', linestyle='--', linewidth=2, label=f'AllocationStart={alloc_start}')
-    plt.axvline(x=alloc_end, color='b', linestyle='--', linewidth=2, label=f'AllocationEnd={alloc_end}')
-
+    if alloc_start and alloc_end:
+        plt.axvline(x=alloc_start, color='b', linestyle='--', linewidth=2, label=f'AllocationStart={alloc_start}')
+        plt.axvline(x=alloc_end, color='b', linestyle='--', linewidth=2, label=f'AllocationEnd={alloc_end}')
 
     plt.title("Memory Usage")
     plt.xlabel("Time")
     plt.ylabel("Memory Used (KB)")
-
     plt.legend()
 
     cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
@@ -53,14 +54,17 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
     @cursor.connect("add")
     def on_hover(sel):
         x, y = sel.target
-
         sel.annotation.set_text(f'{sel.artist.get_label()}: {y:.2f}')
 
         bbox = sel.annotation.get_bbox_patch()
         if bbox is not None:
             bbox.set(fc="white", alpha=0.6)
 
-    plt.show()
+    # Save the plot as an HTML file
+    html_filename = "interactive_plot.html"
+    mpld3.save_html(plt.gcf(), html_filename)
+    print(f"Plot saved as {html_filename}")
+
 
 
 def find_next_intersection(stat1, stat2, start_index, after=True):
@@ -107,6 +111,8 @@ def main():
 
     filename = args[0]
 
+
+
     x = []
     sk = 'Memory Used'
     stats = (sk, "buffers", "cached", "swapCache", "active", "inActive", "swapTotal", "swapFree", "zswap",
@@ -129,38 +135,41 @@ def main():
                 if v is not None:
                     stats[k].append(int(v))
 
-
-    filt =  {sk: stats[sk]} if sk in stats else {}.items()
     x_seconds = np.array([(t - x[0]).total_seconds() for t in x])
+
+    # filt =  {sk: stats[sk]} if sk in stats else {}.items()
+
 
 
     # sk_der1 =  "dx/dy " + sk
     # sk_der2 = "d^2x/dy^2  " + sk
     # sk_der3 = "d^3x/dy^3" + sk
 
-    sk_filter = gaussian_filter1d(filt[sk], sigma=7)
+    # sk_filter = gaussian_filter1d(filt[sk], sigma=7)
+    #
+    # sk_der1 = np.gradient(filt[sk], x_seconds)
+    # sk_der1 = gaussian_filter1d(sk_der1, sigma=5)
+    #
+    #
+    # sk_der2 = np.gradient(sk_der1, x_seconds)
+    # sk_der2 = gaussian_filter1d(sk_der2, sigma=14)
+    #
+    # allocation_end = np.argmin(sk_der2)
+    # allocation_start = np.argmax(sk_der2[:allocation_end])
+    #
+    #
+    # sk_der3 = np.gradient(sk_der2, x_seconds)
+    # sk_der3 = gaussian_filter1d(sk_der3, sigma=15)
+    #
+    #
+    #
+    # maxima = find_n_maxima(sk_der3[allocation_start:], sk_der1[allocation_start:], N-1)
+    # maxima = [ima + allocation_start for ima in maxima]
+    #
+    #
+    # generate_plot(x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
 
-    sk_der1 = np.gradient(filt[sk], x_seconds)
-    sk_der1 = gaussian_filter1d(sk_der1, sigma=5)
-
-
-    sk_der2 = np.gradient(sk_der1, x_seconds)
-    sk_der2 = gaussian_filter1d(sk_der2, sigma=14)
-
-    allocation_end = np.argmin(sk_der2)
-    allocation_start = np.argmax(sk_der2[:allocation_end])
-
-
-    sk_der3 = np.gradient(sk_der2, x_seconds)
-    sk_der3 = gaussian_filter1d(sk_der3, sigma=15)
-
-
-
-    maxima = find_n_maxima(sk_der3[allocation_start:], sk_der1[allocation_start:], N-1)
-    maxima = [ima + allocation_start for ima in maxima]
-
-
-    generate_plot(x_seconds, tuple(filt.items()), x_seconds[allocation_start], x_seconds[allocation_end], *[x_seconds[i] for i in maxima])
+    generate_plot(x_seconds, tuple(stats.items()), None, None)
 
 
 
