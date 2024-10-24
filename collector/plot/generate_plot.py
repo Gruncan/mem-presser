@@ -15,7 +15,7 @@ import mplcursors
 import mpld3
 
 def generate_plot(time, stats, alloc_start, alloc_end, *vs):
-    plt.figure()
+    plt.figure(figsize=(16, 9))
 
     lines = []
 
@@ -34,7 +34,6 @@ def generate_plot(time, stats, alloc_start, alloc_end, *vs):
     plt.xlabel("Time")
     plt.ylabel("Memory Used (KB)")
     plt.legend()
-    plt.figure(figsize=(16, 9))
 
     cursor = mplcursors.cursor(lines, hover=True, annotation_kwargs={'arrowprops': None})
 
