@@ -3,11 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memory Usage Plot</title>
+    <title>Full-Screen Memory Usage Plot</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        #plot-container {
+            width: 100vw;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
 </head>
 <body>
-<h1>Interactive Memory Usage Plot</h1>
-<p>Click the link below to view the interactive memory usage plot:</p>
-<a href="interactive_plot.html">View Interactive Plot</a>
+<div id="plot-container">
+    <iframe src="interactive_plot.html"></iframe>
+</div>
 </body>
 </html>
