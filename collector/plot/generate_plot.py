@@ -5,12 +5,15 @@ from pathlib import Path
 
 
 import numpy as np
+from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks
 
 
 import matplotlib.pyplot as plt
 import mplcursors
 import mpld3
+
+MU = 'Memory Used'
 
 
 class PlotBar:
@@ -25,51 +28,66 @@ class PlotBar:
     def get_data(self):
         return vars(self)
 
-
 class MemoryPlotStat:
 
     def __init__(self, name, data, label=None):
         self.name = name
         self.data = data
         self.label = label if label else name
+        self.data_der1 = None
+        self.data_der2 = None
+        self.data_der3 = None
 
 
+    def calculate_der1(self, time):
+        data_der1 = np.gradient(self.data, time)
+        self.data_der1 = gaussian_filter1d(data_der1, sigma=5)
+        return self.data_der3
 
+    def calculate_der2(self, time):
+        if self.data_der1 is None:
+            self.calculate_der1(time)
+
+        data_der2 = np.gradient(self.data_der1, time)
+        self.data_der2 = gaussian_filter1d(data_der2, sigma=14)
+        return self.data_der2
+
+    def calculate_der3(self, time):
+        if self.data_der2 is None:
+            self.calculate_der2(time)
+
+        data_der3 = np.gradient(self.data_der2, time)
+        self.data_der3 = gaussian_filter1d(data_der3, sigma=15)
+        return self.data_der3
 
 class MemoryPlotGenerator:
 
-    def __init__(self, time, stats=None):
-        if stats is None:
-            stats = list()
-
-        self.time = time
+    def __init__(self, *data_sets):
+        self.data_sets = data_sets
         self.title = "Memory Usage"
         self.x_label = "Time (Seconds)"
         self.y_label = "Memory Used (KB)"
         self.start_bar = None
         self.end_bar = None
         self.bars = []
-        self.stats = stats
+        self.filters = None
 
 
     def add_start_end_bars(self, start_bar, end_bar):
         self.start_bar = start_bar
         self.end_bar = end_bar
 
-    def add_stat(self, stat):
-        self.stats.append(stat)
-
-    def add_stats(self, stats):
-        self.stats += stats
 
     def __generic_plot(self):
         fig, ax = plt.subplots(figsize=(16, 9))
 
         lines = []
 
-        for stat in self.stats:
-            line, = ax.plot(self.time, stat.data, label=stat.label)
-            lines.append(line)
+        for data_set in self.data_sets:
+            for stat in data_set.get_stats():
+            # if self.filters is None or stat.name in self.filters:
+                line, = ax.plot(data_set.time, stat.data, label=f"{data_set.name} ({stat.label})")
+                lines.append(line)
 
         ax.set_title(self.title)
         ax.set_xlabel(self.x_label)
@@ -104,6 +122,17 @@ class MemoryPlotGenerator:
 
         return fig, ax
 
+    def align_memory_data_sets(self):
+        m_set0 = self.data_sets[0]
+        start_time_0, end_time_0 = m_set0.get_allocation_start_end_time()
+
+
+        for m_setx in self.data_sets[1:]:
+            start_time_x, end_time_x = m_setx.get_allocation_start_end_time()
+            offset_required = start_time_x - start_time_0
+            m_setx.time -= offset_required
+
+        return self
 
     def compile_to_html(self, filename):
         fig, _ = self.__generic_plot()
@@ -128,8 +157,35 @@ class MemoryPlotGenerator:
         fig.savefig(filename)
         print(f"Plot saved as {filename}")
 
+class MemoryDataSet:
 
+    def __init__(self, name, time, stats):
+        self.name = name
+        self.time = time
+        self.stats = stats
+        self.filters = []
 
+    def get_allocation_start_end_index(self):
+        mu_der2 = self.stats[MU].calculate_der2(self.time)
+
+        allocation_end = np.argmin(mu_der2)
+        allocation_start = np.argmax(mu_der2[:allocation_end])
+
+        return allocation_start, allocation_end
+
+    def get_allocation_start_end_time(self):
+        s, e = self.get_allocation_start_end_index()
+        return self.time[s], self.time[e]
+
+    def __getitem__(self, item):
+        return self.stats.get(item)
+
+    def add_filter(self, *values):
+        self.filters += values
+        return self
+
+    def get_stats(self):
+        return [stat for stat in self.stats.values() if len(self.filters) == 0 or stat.name in self.filters]
 
 def find_next_intersection(stat1, stat2, start_index, after=True):
     diff = stat1 - stat2
@@ -164,8 +220,34 @@ def find_n_maxima(sk_der3, sk_der1, N):
     return valid_maxima
 
 
+def read_mem_file(filename, name=None):
+    data_dictionary = {}
+    times = []
 
-N = 4
+
+    with open(filename, "r") as f:
+        lines = f.readlines()
+        for line in lines:
+            d = json.loads(line)
+            key = list(d.keys())[0]
+            values = d[key]
+            if len(data_dictionary) == 0:
+                data_dictionary = {key: list() for key in values.keys()}
+                data_dictionary[MU] = []
+            times.append(datetime.strptime(key, '%Y-%m-%d %H:%M:%S.%f'))
+            data_dictionary[MU].append((int(values["total"]) - int(values["free"])))
+            for k in data_dictionary.keys():
+                v = values.get(k, None)
+                if v is not None:
+                    data_dictionary[k].append(int(v))
+
+    stats = {key: MemoryPlotStat(key, data) for key, data in data_dictionary.items()}
+    time_seconds = np.array([(t - times[0]).total_seconds() for t in times])
+
+    if name is None:
+        name = filename
+
+    return MemoryDataSet(name, time_seconds, stats)
 
 def main():
     args = sys.argv[1:]
@@ -179,56 +261,21 @@ def main():
 
 
     times = []
-    sk = 'Memory Used'
-    stats = (sk, "buffers", "cached", "swapCache", "active", "inActive", "swapTotal", "swapFree", "zswap",
-             'zswapped', 'dirty', 'writeback', 'pagesAnon', 'pageMapped', 'kernelStack', 'pageTables',
-             'bounce', 'vmallocChunk', 'perCPU')
 
-    data_dictionary = {key: list() for key in stats}
+    base_path = "/home/duncan/Development/Uni/Thesis/Data/memlog_no_swap/"
 
-
-    with open(filename, "r") as f:
-        lines = f.readlines()
-        for line in lines:
-            d = json.loads(line)
-            key = list(d.keys())[0]
-            values = d[key]
-            times.append(datetime.strptime(key, '%Y-%m-%d %H:%M:%S.%f'))
-            data_dictionary[sk].append((int(values["total"]) - int(values["free"])))
-            for k in data_dictionary.keys():
-                v = values.get(k, None)
-                if v is not None:
-                    data_dictionary[k].append(int(v))
+    mds1 = read_mem_file(base_path + "memlog_nswap2.json", "No Swap 2").add_filter(MU)
+    mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
+    mds3 = read_mem_file(base_path + "memlog_nswap4.json", "No Swap 4").add_filter(MU)
+    mds4 = read_mem_file(base_path + "memlog_nswap5.json", "No Swap 5").add_filter(MU)
 
 
-
-    time_seconds = np.array([(t - times[0]).total_seconds() for t in times])
-
-    stats = [MemoryPlotStat(key, data) for key, data in data_dictionary.items()]
-
-    mpg = MemoryPlotGenerator(time_seconds, stats)
+    mpg = MemoryPlotGenerator(mds1, mds2, mds3, mds4).align_memory_data_sets()
 
     mpg.show_plot()
 
-    # # filt =  {sk: stats[sk]} if sk in stats else {}.items()
-    # #
-    # # sk_der1 =  "dx/dy " + sk
-    # # sk_der2 = "d^2x/dy^2  " + sk
-    # # sk_der3 = "d^3x/dy^3" + sk
-    # #
-    # # sk_filter = gaussian_filter1d(filt[sk], sigma=7)
-    # #
-    # # sk_der1 = np.gradient(filt[sk], x_seconds)
-    # # sk_der1 = gaussian_filter1d(sk_der1, sigma=5)
-    # #
-    # #
-    # # sk_der2 = np.gradient(sk_der1, x_seconds)
-    # # sk_der2 = gaussian_filter1d(sk_der2, sigma=14)
-    # #
-    # # allocation_end = np.argmin(sk_der2)
-    # # allocation_start = np.argmax(sk_der2[:allocation_end])
-    # #
-    # #
+
+
     # # sk_der3 = np.gradient(sk_der2, x_seconds)
     # # sk_der3 = gaussian_filter1d(sk_der3, sigma=15)
     # #
