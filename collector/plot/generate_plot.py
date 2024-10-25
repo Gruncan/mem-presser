@@ -259,20 +259,23 @@ def main():
 
     second_filename = args[1] if len(args) == 2 else None
 
+    stats = (MU, "buffers", "cached", "swapCache", "active", "inActive", "swapTotal", "swapFree", "zswap",
+             'zswapped', 'dirty', 'writeback', 'pagesAnon', 'pageMapped', 'kernelStack', 'pageTables',
+             'bounce', 'vmallocChunk', 'perCPU')
 
-    times = []
 
     base_path = "/home/duncan/Development/Uni/Thesis/Data/memlog_no_swap/"
 
     mds1 = read_mem_file(base_path + "memlog_nswap2.json", "No Swap 2").add_filter(MU)
     mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
-    mds3 = read_mem_file(base_path + "memlog_nswap4.json", "No Swap 4").add_filter(MU)
-    mds4 = read_mem_file(base_path + "memlog_nswap5.json", "No Swap 5").add_filter(MU)
+    # mds3 = read_mem_file(base_path + "memlog_nswap4.json", "No Swap 4").add_filter(MU)
+    # mds4 = read_mem_file(base_path + "memlog_nswap5.json", "No Swap 5").add_filter(MU)
 
 
-    mpg = MemoryPlotGenerator(mds1, mds2, mds3, mds4).align_memory_data_sets()
+    mpg = MemoryPlotGenerator(mds1, mds2)
 
-    mpg.show_plot()
+    mpg.save_plot("docs/noswap_unaligned.png")
+    # mpg.compile_to_html("docs/noswap_unaligned.html")
 
 
 

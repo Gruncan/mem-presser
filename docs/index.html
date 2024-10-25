@@ -67,6 +67,8 @@
     <li><a href="#nonLinearSwapDerivatives">Non Linear Derivatives (With Swap)</a></li>
     <li><a href="#nonLinearNoSwapFail">Non Linear NO swap (Fail)</a></li>
     <li><a href="#nonLinearNoSwap2">Non Linear NO swap 2</a></li>
+    <li><a href="#nonLinearNoSwapMultiple">Non Linear multiple comparison</a></li>
+    <li><a href="#cmpkraftwerk">UK CMP</a></li>
     <li><a href="#ubuntuHost">Ubuntu Non Linear</a></li>
 </ul>
 
@@ -128,6 +130,32 @@
 <hr>
 
 <div class="container">
+    <h2 id="nonLinearNoSwapMultiple">Multiple runs with no swap</h2>
+    <p>Ran identical allocations a few times to compare differences</p>
+    <img src="noswap_unaligned.png">
+    <p>Obviously not helpful if they aren't aligned, so using the 2nd derivative the plots can be aligned :)</p>
+    <div class="plot-container">
+        <iframe src="noswap_comparison.html"></iframe>
+    </div>
+</div>
+
+
+
+<hr>
+
+<div class="container">
+    <h2 id="cmpkraftwerk">On R&S UK CMP</h2>
+    <p>Pulled data every minute from Monday to Today</p>
+    <div class="plot-container">
+        <iframe src="cmpkraftwerk.html"></iframe>
+    </div>
+</div>
+
+
+<hr>
+
+
+<div class="container">
     <h2 id="ubuntuHost">On ubuntu host machine</h2>
     <p>Just thought why not :), see the difference</p>
     <p>(5000MB, 2500MB, 1250MB, 625MB)</p>
@@ -135,7 +163,6 @@
         <iframe src="ubuntu.html"></iframe>
     </div>
 </div>
-
 
 </body>
 </html>
