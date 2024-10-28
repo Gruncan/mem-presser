@@ -23,7 +23,7 @@ int main(int argc, char *argv[]){
 
     void *ptr;
     int count = 0;
-
+    int allocation_times = 1;
     while (1) {
 
         ptr = malloc(length);
@@ -33,7 +33,7 @@ int main(int argc, char *argv[]){
         }
         memset(ptr, 0, length);
 
-        printf("Allocated %lu MB\n", length);
+        printf("Allocated %d\n", allocation_times);
 
         usleep(100000); // 100 ms
 
@@ -53,6 +53,7 @@ int main(int argc, char *argv[]){
             length /= 2;
             count++;
         }
+        allocation_times++;
 
     }
 
