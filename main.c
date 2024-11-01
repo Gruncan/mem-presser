@@ -21,19 +21,23 @@ int main(int argc, char *argv[]){
 
     unsigned long long freeRamStart = info.freeram;
 
-    void *ptr;
+    void **ptrs = malloc(256 * sizeof(void*));
     int count = 0;
-    int allocation_times = 1;
+    int allocation_times = 0;
+
+    unsigned long l2 = length;
+
     while (1) {
 
-        ptr = malloc(length);
-        if (ptr == NULL) {
+        ptrs[allocation_times] = malloc(l2);
+        if (ptrs[allocation_times] == NULL) {
             printf("Memory allocation failed after %d MB\n", count * 10);
             break;
         }
-        memset(ptr, 0, length);
+        memset(ptrs[allocation_times], 0, l2);
 
         printf("Allocated %d\n", allocation_times);
+        allocation_times++;
 
         usleep(100000); // 100 ms
 
@@ -44,16 +48,18 @@ int main(int argc, char *argv[]){
 
 
         if ((double) info.freeram <= 0.3 * (double) freeRamStart && count == 0) {
-            length /= 2;
+            l2 /= 2;
             count++;
         }else if ((double) info.freeram <= 0.2 * (double) freeRamStart && count == 1) {
-            length /= 2;
+            l2 /= 2;
             count++;
         }else if ((double) info.freeram <= 0.1 * (double) freeRamStart && count == 2) {
-            length /= 2;
-            count++;
+            for(int i = 0; i < allocation_times; i++) {
+                free(ptrs[i]);
+            }
+            allocation_times = 0;
+            l2 = length;
         }
-        allocation_times++;
 
     }
 
