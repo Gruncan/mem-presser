@@ -60,6 +60,10 @@ class MemoryPlotStat:
         self.data_der3 = gaussian_filter1d(data_der3, sigma=15)
         return self.data_der3
 
+    def apply_func(self, func):
+        self.data = func(self.data)
+
+
 class MemoryPlotGenerator:
 
     def __init__(self, *data_sets):
@@ -187,6 +191,20 @@ class MemoryDataSet:
     def get_stats(self):
         return [stat for stat in self.stats.values() if len(self.filters) == 0 or stat.name in self.filters]
 
+    def stat_names(self):
+        return self.stats.keys()
+
+    def apply_func(self, func):
+        for stat in self.stats.values():
+            stat.apply_func(func)
+
+    def cut_end_time(self, end_time):
+        closest_index = np.argmin(np.abs(self.time - end_time))
+        self.time = self.time[:closest_index]
+        for stat in self.stats.values():
+            stat.data = stat.data[:closest_index]
+
+
 def find_next_intersection(stat1, stat2, start_index, after=True):
     diff = stat1 - stat2
 
@@ -228,7 +246,10 @@ def read_mem_file(filename, name=None):
     with open(filename, "r") as f:
         lines = f.readlines()
         for line in lines:
-            d = json.loads(line)
+            try:
+                d = json.loads(line)
+            except:
+                continue
             key = list(d.keys())[0]
             values = d[key]
             if len(data_dictionary) == 0:
@@ -264,19 +285,28 @@ def main():
              'bounce', 'vmallocChunk', 'perCPU')
 
 
-    base_path = "/home/duncan/Development/Uni/Thesis/Data/memlog_no_swap/"
+    base_path = "/home/duncan/Development/Uni/Thesis/Data/proc_tracking/"
 
-    mds1 = read_mem_file(base_path + "memlog_nswap2.json", "No Swap 2").add_filter(MU)
-    mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
+    mds1 : MemoryDataSet = read_mem_file(base_path + "allocation_free.json", "Process Attached").add_filter(*stats)
+    # start, end = mds1.get_allocation_start_end_time()
+    # pb1 = PlotBar(start, "Start")
+    # pb2 = PlotBar(end, "End")
+
+    # mds1.cut_end_time(end)
+
+    # mds2 = read_mem_file(base_path + "memlog_nswap3.json", "No Swap 3").add_filter(MU)
     # mds3 = read_mem_file(base_path + "memlog_nswap4.json", "No Swap 4").add_filter(MU)
     # mds4 = read_mem_file(base_path + "memlog_nswap5.json", "No Swap 5").add_filter(MU)
 
 
-    mpg = MemoryPlotGenerator(mds1, mds2)
+    print(mds1.stat_names())
 
-    mpg.save_plot("docs/noswap_unaligned.png")
+    mpg = MemoryPlotGenerator(mds1)
+
+    # mpg.add_start_end_bars(pb1, pb2)
+
+    mpg.show_plot()
     # mpg.compile_to_html("docs/noswap_unaligned.html")
-
 
 
     # # sk_der3 = np.gradient(sk_der2, x_seconds)
