@@ -58,6 +58,7 @@ int main(int argc, char *argv[]){
                 free(ptrs[i]);
             }
             allocation_times = 0;
+            count = 0;
             l2 = length;
         }
 
